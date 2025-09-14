@@ -21,3 +21,43 @@ void loadFromCSV(){
         return;
     }
 }
+
+//เมนูหลัก
+int main(){
+    int choice;
+    loadFromCSV();
+
+do{
+    printf("\n=== Fitness system ===\n");
+    printf("1. Display Members\n");
+    printf("2. Add Member\n");
+    printf("3. Search Member\n");
+    printf("4. Update Member\n");
+    printf("5. Delete Member\n");
+    printf("6. Save & Exit\n");
+    scanf("%d",&choice);
+
+    switch (choice)
+    {
+    case 1:
+        displayMembers();
+        break;
+    case 2:
+        addMember();
+        break;
+    case 3:
+        searchMenber();
+        break;
+    case 4:
+        updateMember();
+        break;
+    default:
+        break;
+    }
+
+
+} while (choice!=0);
+{
+    return 0;
+}
+}
