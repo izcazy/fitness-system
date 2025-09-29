@@ -2,27 +2,69 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX 100
+#define MAX_MEMBERS 100
 #define FILENAME "member.csv"
 
-typedef struct {
-    int id;
-    char name[50];
-    int age;
-    char membership[20];
-} Member;
+char name[MAX_MEMBERS][50];
+int age[MAX_MEMBERS];
+char membershipType[MAX_MEMBERS][20];
+char registrationDate[MAX_MEMBERS][20];
+int memberCount = 0;
 
-//โหลดข้อมูลจากไฟล์
-void loadFromCSV(){
-    FILE *fp = fopen(FILENAME,"r");
-    if(!fp)
-    {
-        printf("ไม่พบไฟล์ %s ");
-        return;
-    }
+
+void loadMembers();
+void saveMembers();
+void addMembers();
+void displayMembers();
+void searchMembers();
+void updateMembers();
+void deleteMembers();
+void menu();
+
+int main()
+{
+    loadMembers();
+    menu();
+    return 0;
 }
 
-//เมนูหลัก
+void loadMembers() {
+    FILE *file = fopen(FILENAME, "r");
+    if (!file) {
+        printf("No existing data found. A new file will be created.\n");
+        return;
+    }
+
+    char line[200];
+    fgets(line, sizeof(line), file); // Skip header
+
+    while (fgets(line, sizeof(line), file)) {
+        sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
+               name[memberCount],
+               &age[memberCount],
+               membershipType[memberCount],
+               registrationDate[memberCount]);
+        memberCount++;
+    }
+    fclose(file);
+}
+
+void saveMembers() {
+    FILE *file = fopen(FILENAME, "w");
+    if (!file) {
+        printf("Error: cannot open file to save. \n");
+        return;
+    }
+
+    fprintf(file, "MemberName,Age,MembershipType,RegistrationDate\n");
+    for (int i = 0; i < memberCount; i++) {
+        fprintf(file, "%s,%d,%s,%s\n",
+                name[i], age[i], membershipType[i], registrationDate[i]);
+    }
+    fclose(file);
+}
+
+
 int main(){
     int choice;
     loadFromCSV();
