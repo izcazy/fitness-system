@@ -12,14 +12,13 @@ char registrationDate[MAX_MEMBERS][20];
 int memberCount = 0;
 
 
-void loadMembers();
-void saveMembers();
-void addMembers();
+void loadFromCSV();
+void saveToCSV();
+void addMember();
+void searchMember();
+void updateMember();
+void deleteMember();
 void displayMembers();
-void searchMembers();
-void updateMembers();
-void deleteMembers();
-void menu();
 
 int main()
 {
@@ -64,13 +63,103 @@ void saveMembers() {
     fclose(file);
 }
 
+void addMember() {
+    if (memberCount >= MAX_MEMBERS) {
+        printf("Member list is full!\n");
+        return;
+    }
 
-int main(){
+    printf("Enter name: ");
+    scanf(" %[^\n]", name[memberCount]);
+    printf("Enter age: ");
+    scanf("%d", &age[memberCount]);
+    printf("Enter membership type (Gold/Silver): ");
+    scanf(" %s", membershipType[memberCount]);
+    printf("Enter registration date (YYYY-MM-DD): ");
+    scanf(" %s", registrationDate[memberCount]);
+
+    memberCount++;
+    saveMembers();
+    printf("Member added successfully!\n");
+}
+
+void displayMembers() {
+    if (memberCount == 0) {
+        printf("No members available.\n");
+        return;
+    }
+
+    printf("\n%-20s %-5s %-15s %-12s\n", "Name", "Age", "Membership", "Registration");
+    printf("-----------------------------------------------------------\n");
+    for (int i = 0; i < memberCount; i++) {
+        printf("%-20s %-5d %-15s %-12s\n",
+               name[i], age[i], membershipType[i], registrationDate[i]);
+    }
+}
+
+void searchMember() {
+    char keyword[50];
+    printf("Enter name or membership type: ");
+    scanf(" %[^\n]", keyword);
+
+    int found = 0;
+    for (int i = 0; i < memberCount; i++) {
+        if (strcasecmp(name[i], keyword) == 0 ||
+            strcasecmp(membershipType[i], keyword) == 0) {
+            printf("Found: %s, %d, %s, %s\n",
+                   name[i], age[i], membershipType[i], registrationDate[i]);
+            found = 1;
+        }
+    }
+    if (!found) printf("No member found.\n");
+}
+
+void updateMember() {
+    char keyword[50];
+    printf("Enter member name to update: ");
+    scanf(" %[^\n]", keyword);
+
+    for (int i = 0; i < memberCount; i++) {
+        if (strcasecmp(name[i], keyword) == 0) {
+            printf("Enter new membership type: ");
+            scanf(" %s", membershipType[i]);
+            saveMembers();
+            printf("Member updated!\n");
+            return;
+        }
+    }
+    printf("Member not found.\n");
+}
+
+void deleteMember() {
+    char keyword[50];
+    printf("Enter member name to delete: ");
+    scanf(" %[^\n]", keyword);
+
+    for (int i = 0; i < memberCount; i++) {
+        if (strcasecmp(name[i], keyword) == 0) {
+            for (int j = i; j < memberCount - 1; j++) {
+                strcpy(name[j], name[j+1]);
+                age[j] = age[j+1];
+                strcpy(membershipType[j], membershipType[j+1]);
+                strcpy(registrationDate[j], registrationDate[j+1]);
+            }
+            memberCount--;
+            saveMembers();
+            printf("Member deleted!\n");
+            return;
+        }
+    }
+    printf("Member not found.\n");
+}
+
+
+void menu(){
     int choice;
     loadFromCSV();
 
 do{
-    printf("\n=== Fitness system ===\n");
+    printf(" Fitness system \n");
     printf("1. Display Members\n");
     printf("2. Add Member\n");
     printf("3. Search Member\n");
