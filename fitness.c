@@ -19,12 +19,19 @@ void searchMember();
 void updateMember();
 void deleteMember();
 void displayMembers();
+void loadMember();
+void menu();
 
-int main()
-{
-    loadMembers();
-    menu();
-    return 0;
+
+#include <stdio.h>
+
+void loadFromCSV() {
+    FILE *fp = fopen("member.csv", "r");
+    if (!fp) {
+        printf("Cannot open member.csv\n");
+        return;
+    }
+    fclose(fp);
 }
 
 void loadMembers() {
@@ -153,6 +160,12 @@ void deleteMember() {
     printf("Member not found.\n");
 }
 
+int main() 
+{
+    loadMembers();
+    menu();
+    return 0;
+}
 
 void menu(){
     int choice;
@@ -166,6 +179,8 @@ do{
     printf("4. Update Member\n");
     printf("5. Delete Member\n");
     printf("6. Save & Exit\n");
+    printf("7. Unit Test\n");
+    printf("enter choice: \n");
     scanf("%d",&choice);
 
     switch (choice)
@@ -177,18 +192,23 @@ do{
         addMember();
         break;
     case 3:
-        searchMenber();
+        searchMember();
         break;
     case 4:
         updateMember();
         break;
+    case 5:
+        deleteMember();
+        break;
+    case 6:
+        printf("data saved. exiting...\n");
+        saveMembers();
+        exit(0);
+    case 0:
+        printf("exiting without saveing...\n");
+        exit(0);
     default:
         break;
     }
-
-
-} while (choice!=0);
-{
-    return 0;
-}
+} while (1);
 }
