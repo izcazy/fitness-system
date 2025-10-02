@@ -172,7 +172,9 @@ void menu(){
     loadFromCSV();
 
 do{
-    printf(" Fitness system \n");
+    printf("=================\n");
+    printf(" Fitness system\n");
+    printf("=================\n");
     printf("1. Display Members\n");
     printf("2. Add Member\n");
     printf("3. Search Member\n");
@@ -180,7 +182,8 @@ do{
     printf("5. Delete Member\n");
     printf("6. Save & Exit\n");
     printf("7. Unit Test\n");
-    printf("enter choice: \n");
+    printf("----------------\n");
+    printf("enter choice: ");
     scanf("%d",&choice);
 
     switch (choice)
