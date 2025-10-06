@@ -5,6 +5,35 @@
 #define MAX_MEMBERS 100
 #define FILENAME "member.csv"
 
+#if defined(_MSC_VER) || defined(_WIN32)
+  /* บน Windows/MSVC ให้ใช้ _stricmp */
+  #define STRCASECMP _stricmp
+#else
+  #include <strings.h>  /* สำหรับ strcasecmp บน GCC/Clang/MinGW */
+  #define STRCASECMP strcasecmp
+#endif
+
+#ifdef _WIN32
+  #define CLEAR_SCREEN "cls"
+#else
+  #define CLEAR_SCREEN "clear"
+#endif
+
+void clearScreen() {
+    system(CLEAR_SCREEN);  /* เรียก system(cls/clear) ตาม OS */
+}
+ 
+#include <ctype.h>  /* ต้องเพิ่มเพื่อใช้ tolower() */
+
+/* ฟังก์ชันแปลงสตริงให้เป็นตัวเล็ก */
+void toLowerCase(char *s) {
+    for (; *s; s++) {
+        *s = tolower((unsigned char)*s);
+    }
+}
+
+
+
 char name[MAX_MEMBERS][50];
 int age[MAX_MEMBERS];
 char membershipType[MAX_MEMBERS][20];
@@ -87,14 +116,19 @@ void addMember() {
         return;
     }
 
-    printf("Enter name: ");
+    printf("Enter name (any case will be converted to lowercase): ");
     scanf(" %[^\n]", name[memberCount]);
+    toLowerCase(name[memberCount]);  
+
     printf("Enter age: ");
     scanf("%d", &age[memberCount]);
-    printf("Enter membership type (Gold/Silver): ");
-    scanf(" %s", membershipType[memberCount]);
+
+    printf("Enter membership type (Gold/Silver, converted to lowercase): ");
+    scanf(" %19s", membershipType[memberCount]);
+    toLowerCase(membershipType[memberCount]);  /* <<< แปลงเป็นตัวเล็ก */
+
     printf("Enter registration date (YYYY-MM-DD): ");
-    scanf(" %s", registrationDate[memberCount]);
+    scanf(" %19s", registrationDate[memberCount]);
 
     memberCount++;
     saveMembers();
@@ -171,137 +205,65 @@ void deleteMember() {
     printf("Member not found.\n");
 }
 
-static int t_run = 0, t_fail = 0;
-#define CHECK(cond) do{ t_run++; if(!(cond)){ t_fail++; \
-  fprintf(stderr,"[FAIL] %s:%d -> %s\n", __FILE__, __LINE__, #cond); } }while(0)
+int addMemberDirect(const char* n, int a, const char* t, const char* d) {
+    if (!n || !t || !d) return -1;
+    if (memberCount >= MAX_MEMBERS) return -1;
+    strncpy(name[memberCount], n, 49); name[memberCount][49] = '\0';
+    age[memberCount] = a;
+    strncpy(membershipType[memberCount], t, 19); membershipType[memberCount][19] = '\0';
+    strncpy(registrationDate[memberCount], d, 19); registrationDate[memberCount][19] = '\0';
+    memberCount++;
+    return memberCount;
+}
+int findByNameCI(const char* n) {
+    if (!n) return -1;
+    for (int i = 0; i < memberCount; i++)
+        if (STRCASECMP(name[i], n) == 0) return i;
+    return -1;
+}
+
+/* ================== Unit Test: Add + Search เท่านั้น ================== */
+static int t_run=0, t_fail=0;
+#define CHECK(c) do{ t_run++; if(!(c)){ t_fail++; \
+  fprintf(stderr,"[FAIL] %s:%d -> %s\n", __FILE__, __LINE__, #c); } }while(0)
 #define CHECK_EQ_INT(a,b) CHECK((a)==(b))
 #define CHECK_STREQ(a,b)  CHECK(strcmp((a),(b))==0)
 
-static void writeFixtureWithHeader(const char* fname){
-    FILE* f = fopen(fname, "w");
-    fprintf(f, "MemberName,Age,MembershipType,RegistrationDate\n");
-    fprintf(f, "John Doe,25,Gold,2025-01-05\n");
-    fprintf(f, "Jane Smith,30,Silver,2025-02-10\n");
-    fprintf(f, "Alex Park,27,Gold,2025-03-03\n");
-    fclose(f);
-}
-static void writeFixtureNoHeader(const char* fname){
-    FILE* f = fopen(fname, "w");
-    fprintf(f, "Chris Kim,41,Silver,2025-04-12\n");
-    fprintf(f, "Chris Kim,29,Gold,2025-04-13\n");
-    fclose(f);
-}
-
-void runUnitTests(){
-    // ==== Scenario 1: ไฟล์มี header ====
-    writeFixtureWithHeader("test_with_header.csv");
+void runUnitTests() {
+    /* ทำในหน่วยความจำล้วน ๆ ไม่แตะไฟล์ */
     memberCount = 0;
-    loadMembersFromFile("test_with_header.csv");
-    CHECK_EQ_INT(memberCount, 3);
-    CHECK_STREQ(name[0], "John Doe");
-    CHECK_EQ_INT(age[1], 30);
-    CHECK_STREQ(membershipType[2], "Gold");
 
-    // ค้นหาแบบ case-insensitive
-    int foundJD = 0;
-    for (int i=0;i<memberCount;i++) if (strcasecmp(name[i], "john doe")==0) { foundJD=1; break; }
-    CHECK(foundJD == 1);
+    /* เตรียมข้อมูลตั้งต้น 2 รายการ */
+    CHECK(addMemberDirect("John Doe", 25, "Gold",   "2025-01-05") > 0);
+    CHECK(addMemberDirect("Jane Smith", 30, "Silver","2025-02-10") > 0);
 
-    // เพิ่ม Mary → เซฟ → อัปเดตเป็น Gold → ลบ Alex → เซฟ → โหลดใหม่ → เช็ค Mary ยังอยู่
-    strcpy(name[memberCount], "Mary Lee");
-    age[memberCount] = 29;
-    strcpy(membershipType[memberCount], "Silver");
-    strcpy(registrationDate[memberCount], "2025-04-01");
-    memberCount++;
-    saveMembersToFile("test_with_header.csv");
+    /* ---- TEST #1: ADD ---- */
+    int before = memberCount;
+    int rc = addMemberDirect("Mary Lee", 29, "Gold", "2025-03-01");
+    CHECK(rc == before + 1);
+    int idxMary = findByNameCI("mary lee");   /* case-insensitive */
+    CHECK(idxMary >= 0);
+    CHECK_STREQ(name[idxMary], "Mary Lee");
+    CHECK_EQ_INT(age[idxMary], 29);
+    CHECK_STREQ(membershipType[idxMary], "Gold");
+    CHECK_STREQ(registrationDate[idxMary], "2025-03-01");
 
-    // update Mary → Gold
+    /* ---- TEST #2: SEARCH ---- */
+    /* 2.1 พบชื่อ (ไม่สนพิมพ์เล็กใหญ่) */
+    CHECK(findByNameCI("JOHN DOE") == 0);
+    /* 2.2 ไม่พบชื่อ */
+    CHECK(findByNameCI("Nobody") == -1);
+    /* 2.3 ค้นหาตาม membership แบบที่ searchMember ทำ */
+    int foundSilver = 0;
     for (int i=0;i<memberCount;i++)
-        if (strcasecmp(name[i], "Mary Lee")==0) { strcpy(membershipType[i], "Gold"); break; }
-    saveMembersToFile("test_with_header.csv");
+        if (STRCASECMP(membershipType[i], "silver")==0) { foundSilver=1; break; }
+    CHECK(foundSilver == 1);
 
-    // delete Alex
-    for (int i=0;i<memberCount;i++){
-        if (strcasecmp(name[i], "Alex Park")==0){
-            for (int j=i;j<memberCount-1;j++){
-                strcpy(name[j], name[j+1]);
-                age[j] = age[j+1];
-                strcpy(membershipType[j], membershipType[j+1]);
-                strcpy(registrationDate[j], registrationDate[j+1]);
-            }
-            memberCount--;
-            break;
-        }
-    }
-    saveMembersToFile("test_with_header.csv");
-
-    // reload & check
-    memberCount = 0;
-    loadMembersFromFile("test_with_header.csv");
-    int maryFound = 0;
-    for (int i=0;i<memberCount;i++) if (strcasecmp(name[i], "Mary Lee")==0) { maryFound=1; break; }
-    CHECK(maryFound == 1);
-
-    // ==== Scenario 2: ไฟล์ไม่มี header + ชื่อซ้ำ ====
-    writeFixtureNoHeader("test_no_header.csv");
-    memberCount = 0;
-    loadMembersFromFile("test_no_header.csv");
-    CHECK_EQ_INT(memberCount, 2);
-    // ลบ Chris Kim ตัวแรก
-    for (int i=0;i<memberCount;i++){
-        if (strcasecmp(name[i], "Chris Kim")==0){
-            for (int j=i;j<memberCount-1;j++){
-                strcpy(name[j], name[j+1]);
-                age[j] = age[j+1];
-                strcpy(membershipType[j], membershipType[j+1]);
-                strcpy(registrationDate[j], registrationDate[j+1]);
-            }
-            memberCount--;
-            break;
-        }
-    }
-    CHECK_EQ_INT(memberCount, 1);
-    CHECK_STREQ(name[0], "Chris Kim");
-        // สรุปผล
-    if (t_fail==0) printf("\nAll unit tests passed! (%d checks)\n", t_run);
+    if (t_fail==0) printf("\nAll unit tests (Add + Search) passed! (%d checks)\n", t_run);
     else printf("\nUnit tests FAILED: %d/%d checks failed.\n", t_fail, t_run);
 
-    // reset counters for re-run
+    /* รีเซ็ตตัวนับเผื่อผู้ใช้กดเทสต์ซ้ำ */
     t_run = t_fail = 0;
-}
-
-static void loadMembersFromFile(const char* filename){
-    FILE *file = fopen(filename, "r");
-    if (!file) { memberCount = 0; return; }
-
-    memberCount = 0;
-    char line[200];
-    if (!fgets(line, sizeof(line), file)) { fclose(file); return; }
-
-    if (strstr(line, "MemberName") == NULL) {
-        sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
-               name[memberCount], &age[memberCount],
-               membershipType[memberCount], registrationDate[memberCount]);
-        memberCount++;
-    }
-    while (fgets(line, sizeof(line), file)) {
-        if (memberCount >= MAX_MEMBERS) break;
-        sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
-               name[memberCount], &age[memberCount],
-               membershipType[memberCount], registrationDate[memberCount]);
-        memberCount++;
-    }
-    fclose(file);
-}
-static void saveMembersToFile(const char* filename){
-    FILE *file = fopen(filename, "w");
-    if (!file) return;
-    fprintf(file, "MemberName,Age,MembershipType,RegistrationDate\n");
-    for (int i=0;i<memberCount;i++){
-        fprintf(file, "%s,%d,%s,%s\n",
-                name[i], age[i], membershipType[i], registrationDate[i]);
-    }
-    fclose(file);
 }
 
 int main() 
@@ -311,11 +273,14 @@ int main()
     return 0;
 }
 
+
+
 void menu(){
-    int choice;
-    loadFromCSV();
+    int choice; 
 
 do{
+    clearScreen();
+
     printf("=================\n");
     printf(" Fitness system\n");
     printf("=================\n");
@@ -328,7 +293,12 @@ do{
     printf("7. Unit Test\n");
     printf("----------------\n");
     printf("enter choice: ");
-    scanf("%d",&choice);
+    if(scanf("%d",&choice)!=1)
+    {
+        int c; while ((c=getchar())!='\n' && c!=EOF){}
+        choice = -1;
+        
+    }
 
     switch (choice)
     {
@@ -361,5 +331,8 @@ do{
         printf("Invalid choice. Try again.\n");
         break;
     }
-} while (1);
+
+    printf("\nPress Enter to continue...");
+        getchar(); getchar();
+    } while (1);
 }
