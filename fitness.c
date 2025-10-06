@@ -6,10 +6,9 @@
 #define FILENAME "member.csv"
 
 #if defined(_MSC_VER) || defined(_WIN32)
-  /* บน Windows/MSVC ให้ใช้ _stricmp */
   #define STRCASECMP _stricmp
 #else
-  #include <strings.h>  /* สำหรับ strcasecmp บน GCC/Clang/MinGW */
+  #include <strings.h>  
   #define STRCASECMP strcasecmp
 #endif
 
