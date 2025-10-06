@@ -20,12 +20,10 @@
 #endif
 
 void clearScreen() {
-    system(CLEAR_SCREEN);  /* เรียก system(cls/clear) ตาม OS */
+    system(CLEAR_SCREEN);  
 }
- 
-#include <ctype.h>  /* ต้องเพิ่มเพื่อใช้ tolower() */
+#include <ctype.h>  
 
-/* ฟังก์ชันแปลงสตริงให้เป็นตัวเล็ก */
 void toLowerCase(char *s) {
     for (; *s; s++) {
         *s = tolower((unsigned char)*s);
@@ -75,10 +73,10 @@ void loadMembers() {
     memberCount = 0;
     char line[200];
 
-    // อ่านบรรทัดแรก: ถ้าเป็น header ให้ข้าม
+    
     if (!fgets(line, sizeof(line), file)) { fclose(file); return; }
     if (strstr(line, "MemberName") == NULL) {
-        // ไม่ใช่ header → parse เป็นข้อมูลแถวแรก
+        
         sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
                name[memberCount], &age[memberCount],
                membershipType[memberCount], registrationDate[memberCount]);
@@ -125,7 +123,7 @@ void addMember() {
 
     printf("Enter membership type (Gold/Silver, converted to lowercase): ");
     scanf(" %19s", membershipType[memberCount]);
-    toLowerCase(membershipType[memberCount]);  /* <<< แปลงเป็นตัวเล็ก */
+    toLowerCase(membershipType[memberCount]);  
 
     printf("Enter registration date (YYYY-MM-DD): ");
     scanf(" %19s", registrationDate[memberCount]);
