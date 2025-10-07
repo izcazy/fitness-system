@@ -18,15 +18,29 @@
   #define CLEAR_SCREEN "clear"
 #endif
 
-void clearScreen() {
+void clearScreen() 
+{
     system(CLEAR_SCREEN);  
 }
 #include <ctype.h>  
 
-void toLowerCase(char *s) {
+void toLowerCase(char *s) 
+{
     for (; *s; s++) {
         *s = tolower((unsigned char)*s);
     }
+}
+
+/* ตรวจสอบว่า string มีแต่ตัวอักษรกับช่องว่างเท่านั้น */
+int isValidNameOrType(const char *s) 
+{
+    for (int i = 0; s[i] != '\0'; i++) 
+    {
+        if (!isalpha((unsigned char)s[i]) && !isspace((unsigned char)s[i])) {
+            return 0;  // พบอักขระแปลก
+        }
+    }
+    return 1;
 }
 
 
@@ -54,18 +68,22 @@ static void saveMembersToFile(const char* filename);
 
 
 
-void loadFromCSV() {
+void loadFromCSV() 
+{
     FILE *fp = fopen("member.csv", "r");
-    if (!fp) {
+    if (!fp) 
+    {
         printf("Cannot open member.csv\n");
         return;
     }
     fclose(fp);
 }
 
-void loadMembers() {
+void loadMembers() 
+{
     FILE *file = fopen(FILENAME, "r");
-    if (!file) {
+    if (!file) 
+    {
         printf("No existing data found. A new file will be created.\n");
         return;
     }
@@ -73,8 +91,11 @@ void loadMembers() {
     char line[200];
 
     
-    if (!fgets(line, sizeof(line), file)) { fclose(file); return; }
-    if (strstr(line, "MemberName") == NULL) {
+    if (!fgets(line, sizeof(line), file)) 
+    { fclose(file); return; }
+
+    if (strstr(line, "MemberName") == NULL) 
+    {
         
         sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
                name[memberCount], &age[memberCount],
@@ -82,7 +103,8 @@ void loadMembers() {
         memberCount++;
     }
 
-    while (fgets(line, sizeof(line), file)) {
+    while (fgets(line, sizeof(line), file)) 
+    {
         if (memberCount >= MAX_MEMBERS) break;
         sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
                name[memberCount], &age[memberCount],
@@ -92,26 +114,64 @@ void loadMembers() {
     fclose(file);
 }
 
-void saveMembers() {
+void saveMembers() 
+{
     FILE *file = fopen(FILENAME, "w");
-    if (!file) {
+    if (!file) 
+    {
         printf("Error: cannot open file to save. \n");
         return;
     }
 
     fprintf(file, "MemberName,Age,MembershipType,RegistrationDate\n");
-    for (int i = 0; i < memberCount; i++) {
+    for (int i = 0; i < memberCount; i++) 
+    {
         fprintf(file, "%s,%d,%s,%s\n",
                 name[i], age[i], membershipType[i], registrationDate[i]);
     }
     fclose(file);
 }
 
-void addMember() {
-    if (memberCount >= MAX_MEMBERS) {
+void addMember() 
+{
+    if (memberCount >= MAX_MEMBERS) 
+    {
         printf("Member list is full!\n");
         return;
     }
+
+    do
+    {
+        printf("Enter name (letters only):");
+        scanf(" %[^\n]", name[memberCount]);
+        if (!isValidNameOrType(name[memberCount]))
+        {
+            printf("Invalid input! Name must contain only letters and spaces.\n");
+        }
+    }
+    while (!isValidNameOrType(name[memberCount]));
+    toLowerCase(name[memberCount]);
+
+    printf("Enter age: ");
+    scanf("%d", &age[memberCount]);
+
+    do {
+        printf("Enter membership type (Gold/Silver): ");
+        scanf(" %19s", membershipType[memberCount]);
+        if (!isValidNameOrType(membershipType[memberCount])) {
+            printf("Invalid input! Type must contain only letters.\n");
+        }
+    } while (!isValidNameOrType(membershipType[memberCount]));
+
+    toLowerCase(membershipType[memberCount]);
+
+    printf("Enter registration date (YYYY-MM-DD): ");
+    scanf(" %19s", registrationDate[memberCount]);
+
+    memberCount++;
+    saveMembers();
+    printf("Member added successfully!\n");
+
 
     printf("Enter name (any case will be converted to lowercase): ");
     scanf(" %[^\n]", name[memberCount]);
@@ -132,26 +192,40 @@ void addMember() {
     printf("Member added successfully!\n");
 }
 
-void displayMembers() {
-    if (memberCount == 0) {
+void displayMembers() 
+{
+    if (memberCount == 0) 
+    {
         printf("No members available.\n");
         return;
     }
 
     printf("\n%-20s %-5s %-15s %-12s\n", "Name", "Age", "Membership", "Registration");
     printf("-----------------------------------------------------------\n");
-    for (int i = 0; i < memberCount; i++) {
+    for (int i = 0; i < memberCount; i++) 
+    {
         printf("%-20s %-5d %-15s %-12s\n",
                name[i], age[i], membershipType[i], registrationDate[i]);
     }
 }
 
-void searchMember() {
+void searchMember() 
+{
     char keyword[50];
-    printf("Enter name or membership type: ");
-    scanf(" %[^\n]", keyword);
+    do 
+    {
+        printf("Enter name or membership type (letters only): ");
+        scanf(" %[^\n]", keyword);
+        if (!isValidNameOrType(keyword)) 
+        {
+            printf("Invalid input! Please use only letters and spaces.\n");
+        }
+    } 
+    while (!isValidNameOrType(keyword));
+    toLowerCase(keyword);
 
-    int found = 0;
+
+     int found = 0;
     for (int i = 0; i < memberCount; i++) {
         if (strcasecmp(name[i], keyword) == 0 ||
             strcasecmp(membershipType[i], keyword) == 0) {
@@ -163,13 +237,17 @@ void searchMember() {
     if (!found) printf("No member found.\n");
 }
 
-void updateMember() {
+
+void updateMember() 
+{
     char keyword[50];
     printf("Enter member name to update: ");
     scanf(" %[^\n]", keyword);
 
-    for (int i = 0; i < memberCount; i++) {
-        if (strcasecmp(name[i], keyword) == 0) {
+    for (int i = 0; i < memberCount; i++) 
+    {
+        if (strcasecmp(name[i], keyword) == 0) 
+        {
             printf("Enter new membership type: ");
             scanf(" %s", membershipType[i]);
             saveMembers();
@@ -177,6 +255,7 @@ void updateMember() {
             return;
         }
     }
+
     printf("Member not found.\n");
 }
 
@@ -202,7 +281,8 @@ void deleteMember() {
     printf("Member not found.\n");
 }
 
-int addMemberDirect(const char* n, int a, const char* t, const char* d) {
+int addMemberDirect(const char* n, int a, const char* t, const char* d)
+{
     if (!n || !t || !d) return -1;
     if (memberCount >= MAX_MEMBERS) return -1;
     strncpy(name[memberCount], n, 49); name[memberCount][49] = '\0';
@@ -219,38 +299,40 @@ int findByNameCI(const char* n) {
     return -1;
 }
 
-/* ================== Unit Test: Add + Search เท่านั้น ================== */
+
+// Unit Test: Add + Search เท่านั้น 
 static int t_run=0, t_fail=0;
 #define CHECK(c) do{ t_run++; if(!(c)){ t_fail++; \
   fprintf(stderr,"[FAIL] %s:%d -> %s\n", __FILE__, __LINE__, #c); } }while(0)
 #define CHECK_EQ_INT(a,b) CHECK((a)==(b))
 #define CHECK_STREQ(a,b)  CHECK(strcmp((a),(b))==0)
 
-void runUnitTests() {
-    /* ทำในหน่วยความจำล้วน ๆ ไม่แตะไฟล์ */
+void runUnitTests() 
+{
+    //ทำในหน่วยความจำล้วน ๆ ไม่แตะไฟล์
     memberCount = 0;
 
-    /* เตรียมข้อมูลตั้งต้น 2 รายการ */
+    //เตรียมข้อมูลตั้งต้น 2 รายการ 
     CHECK(addMemberDirect("John Doe", 25, "Gold",   "2025-01-05") > 0);
     CHECK(addMemberDirect("Jane Smith", 30, "Silver","2025-02-10") > 0);
 
-    /* ---- TEST #1: ADD ---- */
+    // TEST #1: ADD
     int before = memberCount;
     int rc = addMemberDirect("Mary Lee", 29, "Gold", "2025-03-01");
     CHECK(rc == before + 1);
-    int idxMary = findByNameCI("mary lee");   /* case-insensitive */
+    int idxMary = findByNameCI("mary lee");   //case-insensitive 
     CHECK(idxMary >= 0);
     CHECK_STREQ(name[idxMary], "Mary Lee");
     CHECK_EQ_INT(age[idxMary], 29);
     CHECK_STREQ(membershipType[idxMary], "Gold");
     CHECK_STREQ(registrationDate[idxMary], "2025-03-01");
 
-    /* ---- TEST #2: SEARCH ---- */
-    /* 2.1 พบชื่อ (ไม่สนพิมพ์เล็กใหญ่) */
+    //TEST #2: SEARCH 
+    //พบชื่อ (ไม่สนพิมพ์เล็กใหญ่) 
     CHECK(findByNameCI("JOHN DOE") == 0);
-    /* 2.2 ไม่พบชื่อ */
+    // ไม่พบชื่อ 
     CHECK(findByNameCI("Nobody") == -1);
-    /* 2.3 ค้นหาตาม membership แบบที่ searchMember ทำ */
+    //ค้นหาตาม membership แบบที่ searchMember ทำ 
     int foundSilver = 0;
     for (int i=0;i<memberCount;i++)
         if (STRCASECMP(membershipType[i], "silver")==0) { foundSilver=1; break; }
@@ -259,7 +341,7 @@ void runUnitTests() {
     if (t_fail==0) printf("\nAll unit tests (Add + Search) passed! (%d checks)\n", t_run);
     else printf("\nUnit tests FAILED: %d/%d checks failed.\n", t_fail, t_run);
 
-    /* รีเซ็ตตัวนับเผื่อผู้ใช้กดเทสต์ซ้ำ */
+    // รีเซ็ตตัวนับเผื่อผู้ใช้กดเทสต์ซ้ำ 
     t_run = t_fail = 0;
 }
 
