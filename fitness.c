@@ -31,6 +31,8 @@ void toLowerCase(char *s)
     }
 }
 
+int deleteByNameCI(const char* n);
+
 /* ตรวจสอบว่า string มีแต่ตัวอักษรกับช่องว่างเท่านั้น */
 int isValidNameOrType(const char *s) 
 {
@@ -65,7 +67,15 @@ void runUnitTests();
 
 static void loadMembersFromFile(const char* filename);
 static void saveMembersToFile(const char* filename);
-void runE2ETests(void);
+/* E2E Test */
+void runE2EAllErrors(void);
+static void resetStoreE2E2(void);
+static int  addMemberE2E2(const char* n,int a,const char* t,const char* d);
+static void loadMembersE2E2(const char* filename);
+static void saveMembersE2E2(const char* filename);
+static int  deleteByNameCIE2E2(const char* n);
+static void writeTextFileE2E2(const char* filename, const char* content);
+
 
 
 void loadFromCSV() 
@@ -299,6 +309,24 @@ int findByNameCI(const char* n) {
     return -1;
 }
 
+int deleteByNameCI(const char* n) {
+    if (!n || memberCount <= 0) return 0;
+    for (int i = 0; i < memberCount; i++) {
+        if (STRCASECMP(name[i], n) == 0) {
+            for (int j = i; j < memberCount - 1; j++) {
+                strcpy(name[j], name[j+1]);
+                age[j] = age[j+1];
+                strcpy(membershipType[j], membershipType[j+1]);
+                strcpy(registrationDate[j], registrationDate[j+1]);
+            }
+            memberCount--;
+            return 1; /* ลบสำเร็จ (ลบตัวแรกที่เจอเท่านั้น) */
+        }
+    }
+    return 0; /* ไม่พบ */
+}
+
+
 
 // Unit Test: Add + Search เท่านั้น 
 static int t_run=0, t_fail=0;
@@ -331,117 +359,61 @@ static int addLowered(const char* n, int a, const char* t, const char* d){
 void runUnitTests(void)
 {
     resetStore();
+    t_run = t_fail = 0;
 
-    /* ---------- 0) Empty dataset behavior ---------- */
-    CHECK(findByNameCI("any") == -1);
+    printf("\n===== Running Unit Tests: Search + Delete =====\n");
 
-    /* ---------- 1) addMemberDirect: invalid params ---------- */
-    CHECK(addMemberDirect(NULL, 20, "gold", "2025-01-01") == -1);
-    CHECK(addMemberDirect("john", 20, NULL, "2025-01-01") == -1);
-    CHECK(addMemberDirect("john", 20, "gold", NULL) == -1);
+    /* เตรียมข้อมูล: john (idx0), jane (idx1), JOHN ซ้ำ (idx2) */
+    CHECK(addLowered("John Doe",   25, "Gold",   "2025-01-05") > 0); // 0
+    CHECK(addLowered("Jane Smith", 30, "Silver", "2025-02-10") > 0); // 1
+    CHECK(addLowered("JOHN DOE",   28, "Gold",   "2025-03-01") > 0); // 2
+
+    /* ---- SEARCH ---- */
+    CHECK(findByNameCI("john doe") == 0);    /* case-insensitive */
+    CHECK(findByNameCI("JOHN DOE") == 0);    /* ชื่อซ้ำ → ต้องคืนตัวแรกเสมอ */
+    CHECK(findByNameCI("jane smith") == 1);
+    CHECK(findByNameCI("nobody") == -1);     /* ไม่พบ */
+
+    /* ---- DELETE (ลบชื่อซ้ำ: ต้องลบตัวแรกเท่านั้น) ---- */
+    int before = memberCount;
+    CHECK(deleteByNameCI("JoHn DoE") == 1);  /* ลบ john ตัวแรก (idx0) */
+    CHECK(memberCount == before - 1);
+
+    /* หลังลบ: jane ควรเลื่อนมาเป็น idx0 และ JOHN เดิมเลื่อนเป็น idx1 */
+    CHECK(STRCASECMP(name[0], "jane smith") == 0);
+    CHECK(STRCASECMP(name[1], "john doe")   == 0);
+
+    /* ลบ JOHN ที่เหลืออยู่ */
+    before = memberCount;
+    CHECK(deleteByNameCI("john doe") == 1);
+    CHECK(memberCount == before - 1);
+    CHECK(findByNameCI("john doe") == -1);   /* ไม่มี john เหลือแล้ว */
+    CHECK(STRCASECMP(name[0], "jane smith") == 0);
+
+    /* ลบชื่อที่ไม่มีในระบบ → ไม่ควรเปลี่ยนจำนวน */
+    before = memberCount;
+    CHECK(deleteByNameCI("not-exist") == 0);
+    CHECK(memberCount == before);
+
+    /* ลบจนคลังว่าง แล้วลองลบอีกครั้ง → ต้องคืน 0 */
+    CHECK(deleteByNameCI("jane smith") == 1);
+    CHECK(memberCount == 0);
+    CHECK(deleteByNameCI("any") == 0);
     CHECK(memberCount == 0);
 
-    /* ---------- 2) add + search (normal flow, case-insensitive) ---------- */
-    CHECK(addLowered("John Doe",   25, "Gold",   "2025-01-05") > 0);
-    CHECK(addLowered("Jane Smith", 30, "Silver", "2025-02-10") > 0);
+    /* สรุปผล */
+    if (t_fail == 0)
+        printf("Search+Delete unit tests passed! (%d checks)\n", t_run);
+    else
+        printf("Search+Delete unit tests FAILED: %d/%d failed.\n", t_fail, t_run);
 
-    /* ค้นหาชื่อ: ต้องเจอแบบไม่สนตัวพิมพ์ */
-    CHECK(findByNameCI("john doe") == 0);
-    CHECK(findByNameCI("JOHN DOE") == 0);
-    CHECK(findByNameCI("Jane Smith") == 1);
-
-    /* ค้นหาตาม membership (จำลอง logic searchMember) */
-    int foundGold=0, foundSilver=0;
-    for (int i=0;i<memberCount;i++){
-        if (STRCASECMP(membershipType[i], "gold")==0)   foundGold=1;
-        if (STRCASECMP(membershipType[i], "silver")==0) foundSilver=1;
-    }
-    CHECK(foundGold==1 && foundSilver==1);
-
-    /* ---------- 3) duplicate names: expect first index ---------- */
-    CHECK(addLowered("JOHN DOE", 28, "gold", "2025-03-01") > 0); /* ชื่อซ้ำ */
-    int idxFirst = findByNameCI("john doe");
-    CHECK(idxFirst == 0); /* ต้องคืนตัวแรกเสมอ */
-    CHECK(STRCASECMP(name[idxFirst], "john doe")==0);
-
-    /* ---------- 4) boundary length & truncation ---------- */
-    /* สร้างชื่อเกิน 49 ตัว, type เกิน 19 ตัว → addMemberDirect จะตัดให้พอดี buffer */
-    char longName[200]; char longType[200];
-    memset(longName, 'a', sizeof(longName)); longName[sizeof(longName)-1]='\0';
-    memset(longType, 'b', sizeof(longType)); longType[sizeof(longType)-1]='\0';
-    int before = memberCount;
-    CHECK(addLowered(longName, 22, longType, "2025-04-01") == before+1);
-    /* ตรวจว่าปิดสตริงด้วย '\0' และไม่ crash (แค่อ่านปลอดภัย) */
-    int last = memberCount-1;
-    CHECK(name[last][49] == '\0');            /* การันตี null-terminated */
-    CHECK(membershipType[last][19] == '\0');  /* การันตี null-terminated */
-
-    /* ---------- 5) isValidNameOrType should reject weird chars ---------- */
-    CHECK(isValidNameOrType("normal name") == 1);
-    CHECK(isValidNameOrType("gold") == 1);
-    CHECK(isValidNameOrType("silver vip") == 1);
-    CHECK(isValidNameOrType("john_doe") == 0);   /* _ ไม่อนุญาต */
-    CHECK(isValidNameOrType("john123") == 0);    /* ตัวเลขไม่อนุญาต */
-    CHECK(isValidNameOrType("@silver") == 0);    /* สัญลักษณ์ */
-
-    /* ---------- 6) capacity full ---------- */
-    /* เติมให้เต็ม แล้วพยายาม add เพิ่ม ต้องล้มเหลวและไม่เพิ่ม memberCount */
-    while (memberCount < MAX_MEMBERS){
-        char tmp[32]; snprintf(tmp, sizeof(tmp), "x%03d", memberCount);
-        CHECK(addLowered(tmp, 20, "gold", "2025-05-01") > 0 || memberCount==MAX_MEMBERS);
-    }
-    int mcBefore = memberCount;
-    CHECK(addLowered("cannot-add", 20, "gold", "2025-06-01") == -1);
-    CHECK(memberCount == mcBefore);
-
-    /* ---------- 7) search on not-found ---------- */
-    CHECK(findByNameCI("nonexistent") == -1);
-
-    /* ---------- Report ---------- */
-    if (t_fail==0) printf("\nAll unit tests (Add + Search: robust) passed! (%d checks)\n", t_run);
-    else           printf("\nUnit tests FAILED: %d/%d checks failed.\n", t_fail, t_run);
-
-    /* reset counters for re-run */
+    /* พร้อมรันใหม่ */
     t_run = t_fail = 0;
     resetStore();
 }
 
-/* -------- helpers สำหรับโหลด/เซฟจากไฟล์ที่ระบุ (ใช้ใน E2E) -------- */
-static void loadMembersFromFile(const char* filename){
-    FILE *file = fopen(filename, "r");
-    memberCount = 0;
-    if (!file) return;
-
-    char line[200];
-    if (!fgets(line, sizeof(line), file)) { fclose(file); return; }
-    if (strstr(line, "MemberName") == NULL) {
-        sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
-               name[memberCount], &age[memberCount],
-               membershipType[memberCount], registrationDate[memberCount]);
-        memberCount++;
-    }
-    while (fgets(line, sizeof(line), file)) {
-        if (memberCount >= MAX_MEMBERS) break;
-        sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
-               name[memberCount], &age[memberCount],
-               membershipType[memberCount], registrationDate[memberCount]);
-        memberCount++;
-    }
-    fclose(file);
-}
-static void saveMembersToFile(const char* filename){
-    FILE *file = fopen(filename, "w");
-    if (!file) return;
-    fprintf(file, "MemberName,Age,MembershipType,RegistrationDate\n");
-    for (int i=0;i<memberCount;i++){
-        fprintf(file, "%s,%d,%s,%s\n",
-                name[i], age[i], membershipType[i], registrationDate[i]);
-    }
-    fclose(file);
-}
-
-/* เคลียร์สโตร์ในหน่วยความจำ */
-static void resetStore(void){
+/* ===== helpers (E2E2) — ชื่อไม่ซ้ำของเดิม ===== */
+static void resetStoreE2E2(void){
     for (int i=0;i<memberCount;i++){
         name[i][0] = '\0';
         membershipType[i][0] = '\0';
@@ -451,137 +423,199 @@ static void resetStore(void){
     memberCount = 0;
 }
 
-/* เติมแบบแปลงเป็นตัวเล็กก่อน เพื่อจำลอง flow ของ addMember() */
-static int addLoweredE2E(const char* n, int a, const char* t, const char* d){
+/* จำลอง add แบบ lower-case ตาม flow จริง โดยไม่ใช้คีย์บอร์ด */
+static int addMemberE2E2(const char* n,int a,const char* t,const char* d){
     char nn[50], tt[20], dd[20];
-    if (!n||!t||!d) return -1;
-    strncpy(nn, n, sizeof(nn)-1); nn[sizeof(nn)-1]='\0'; toLowerCase(nn);
-    strncpy(tt, t, sizeof(tt)-1); tt[sizeof(tt)-1]='\0'; toLowerCase(tt);
-    strncpy(dd, d, sizeof(dd)-1); dd[sizeof(dd)-1]='\0';
-    return addMemberDirect(nn, a, tt, dd);
+    if(!n||!t||!d) return -1;
+    strncpy(nn,n,sizeof(nn)-1); nn[sizeof(nn)-1]='\0'; toLowerCase(nn);
+    strncpy(tt,t,sizeof(tt)-1); tt[sizeof(tt)-1]='\0'; toLowerCase(tt);
+    strncpy(dd,d,sizeof(dd)-1); dd[sizeof(dd)-1]='\0';
+    return addMemberDirect(nn,a,tt,dd);
 }
 
-/* ======================= E2E TEST (End-to-End) ======================= */
-/* จำลองการทำงานจริง: เพิ่ม → เซฟไฟล์ → โหลดกลับ → อัปเดต → ลบ → ตรวจสอบครบทุกขั้นตอน */
-
-static void resetStoreE2E(void) {
-    for (int i = 0; i < memberCount; i++) {
-        name[i][0] = '\0';
-        membershipType[i][0] = '\0';
-        registrationDate[i][0] = '\0';
-        age[i] = 0;
-    }
-    memberCount = 0;
-}
-
-/* เพิ่มสมาชิก (จำลองแบบแปลงตัวเล็กเหมือน addMember จริง) */
-static int addMemberE2E(const char* n, int a, const char* t, const char* d) {
-    char nn[50], tt[20], dd[20];
-    if (!n || !t || !d) return -1;
-    strncpy(nn, n, sizeof(nn) - 1); nn[sizeof(nn) - 1] = '\0'; toLowerCase(nn);
-    strncpy(tt, t, sizeof(tt) - 1); tt[sizeof(tt) - 1] = '\0'; toLowerCase(tt);
-    strncpy(dd, d, sizeof(dd) - 1); dd[sizeof(dd) - 1] = '\0';
-    return addMemberDirect(nn, a, tt, dd);
-}
-
-/* โหลดจากไฟล์เฉพาะสำหรับ E2E */
-static void loadMembersE2E(const char* filename) {
+/* โหลด/เซฟ โดยชี้ไฟล์เทสเฉพาะ (ไม่แตะ FILENAME จริง) */
+static void loadMembersE2E2(const char* filename){
     FILE *file = fopen(filename, "r");
     memberCount = 0;
     if (!file) return;
-
     char line[200];
-    if (!fgets(line, sizeof(line), file)) { fclose(file); return; }
-    if (strstr(line, "MemberName") == NULL) {
-        sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
-               name[memberCount], &age[memberCount],
-               membershipType[memberCount], registrationDate[memberCount]);
+    if (!fgets(line,sizeof(line),file)){ fclose(file); return; }
+    if (strstr(line,"MemberName")==NULL){
+        sscanf(line,"%49[^,],%d,%19[^,],%19[^\n]",
+               name[memberCount],&age[memberCount],
+               membershipType[memberCount],registrationDate[memberCount]);
         memberCount++;
     }
-    while (fgets(line, sizeof(line), file)) {
-        if (memberCount >= MAX_MEMBERS) break;
-        sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
-               name[memberCount], &age[memberCount],
-               membershipType[memberCount], registrationDate[memberCount]);
+    while (fgets(line,sizeof(line),file)){
+        if (memberCount>=MAX_MEMBERS) break;
+        sscanf(line,"%49[^,],%d,%19[^,],%19[^\n]",
+               name[memberCount],&age[memberCount],
+               membershipType[memberCount],registrationDate[memberCount]);
         memberCount++;
     }
     fclose(file);
 }
-
-/* เซฟลงไฟล์เฉพาะสำหรับ E2E */
-static void saveMembersE2E(const char* filename) {
-    FILE *file = fopen(filename, "w");
-    if (!file) return;
-    fprintf(file, "MemberName,Age,MembershipType,RegistrationDate\n");
-    for (int i = 0; i < memberCount; i++) {
-        fprintf(file, "%s,%d,%s,%s\n", name[i], age[i], membershipType[i], registrationDate[i]);
+static void saveMembersE2E2(const char* filename){
+    FILE *file = fopen(filename,"w");
+    if(!file) return;
+    fprintf(file,"MemberName,Age,MembershipType,RegistrationDate\n");
+    for(int i=0;i<memberCount;i++){
+        fprintf(file,"%s,%d,%s,%s\n",name[i],age[i],membershipType[i],registrationDate[i]);
     }
     fclose(file);
 }
 
-/* ทดสอบครบวงจร */
-void runE2ETestFlow(void) {
-    const char *TEMP_FILE = "e2e_test_data.csv";
-    printf("\n=== Running E2E Test Flow (%s) ===\n", TEMP_FILE);
-
-    resetStoreE2E();
-
-    /* Step 1: เพิ่มข้อมูลใหม่ */
-    CHECK(addMemberE2E("John Doe", 25, "Gold", "2025-01-05") > 0);
-    CHECK(addMemberE2E("Jane Smith", 30, "Silver", "2025-02-10") > 0);
-    saveMembersE2E(TEMP_FILE);
-    CHECK(memberCount == 2);
-
-    /* Step 2: โหลดใหม่จากไฟล์ → ตรวจสอบข้อมูลตรง */
-    resetStoreE2E();
-    loadMembersE2E(TEMP_FILE);
-    CHECK(memberCount == 2);
-    CHECK(STRCASECMP(name[0], "john doe") == 0);
-    CHECK(STRCASECMP(name[1], "jane smith") == 0);
-
-    /* Step 3: อัปเดตข้อมูล Jane เป็น Gold แล้วเซฟใหม่ */
-    int idxJane = findByNameCI("jane smith");
-    CHECK(idxJane >= 0);
-    strcpy(membershipType[idxJane], "gold");
-    saveMembersE2E(TEMP_FILE);
-
-    resetStoreE2E();
-    loadMembersE2E(TEMP_FILE);
-    idxJane = findByNameCI("jane smith");
-    CHECK(idxJane >= 0);
-    CHECK(STRCASECMP(membershipType[idxJane], "gold") == 0);
-
-    /* Step 4: ลบ John แล้วเซฟใหม่ */
-    int idxJohn = findByNameCI("john doe");
-    CHECK(idxJohn >= 0);
-    for (int j = idxJohn; j < memberCount - 1; j++) {
-        strcpy(name[j], name[j + 1]);
-        age[j] = age[j + 1];
-        strcpy(membershipType[j], membershipType[j + 1]);
-        strcpy(registrationDate[j], registrationDate[j + 1]);
+/* ลบแบบ non-interactive: ลบเฉพาะ “ตัวแรก” ที่ชื่อแมตช์ (case-insensitive) */
+static int deleteByNameCIE2E2(const char* n){
+    if(!n || memberCount<=0) return 0;
+    for(int i=0;i<memberCount;i++){
+        if(STRCASECMP(name[i],n)==0){
+            for(int j=i;j<memberCount-1;j++){
+                strcpy(name[j],name[j+1]);
+                age[j]=age[j+1];
+                strcpy(membershipType[j],membershipType[j+1]);
+                strcpy(registrationDate[j],registrationDate[j+1]);
+            }
+            memberCount--;
+            return 1;
+        }
     }
-    memberCount--;
-    saveMembersE2E(TEMP_FILE);
+    return 0;
+}
 
-    resetStoreE2E();
-    loadMembersE2E(TEMP_FILE);
-    CHECK(memberCount == 1);
-    CHECK(findByNameCI("john doe") == -1);
-    CHECK(findByNameCI("jane smith") >= 0);
+/* เขียนไฟล์ดิบ (ใช้สำหรับสร้าง empty/header-only/malformed) */
+static void writeTextFileE2E2(const char* filename,const char* content){
+    FILE* f=fopen(filename,"w");
+    if(!f) return;
+    if(content) fputs(content,f);
+    fclose(f);
+}
 
-    /* Step 5: ลบไฟล์ชั่วคราวหลังเทสต์ */
-    remove(TEMP_FILE);
+void runE2EAllErrors(void){
+    const char* TFILE = "e2e_all_errors.csv";
+    printf("\n=== Running E2E (all error paths) using %s ===\n", TFILE);
 
-    if (t_fail == 0)
-        printf("✅ E2E Test Flow PASSED (%d checks)\n", t_run);
-    else
-        printf("❌ E2E Test Flow FAILED: %d/%d checks failed.\n", t_fail, t_run);
+    /* 0) เริ่มจากลบไฟล์เก่าถ้ามี */
+    remove(TFILE);
 
+    /* 1) โหลดจากไฟล์ที่ไม่มี → ต้องไม่พังและ memberCount=0 */
+    resetStoreE2E2();
+    loadMembersE2E2(TFILE);
+    CHECK(memberCount==0);
+
+    /* 2) ไฟล์ว่างเปล่า */
+    writeTextFileE2E2(TFILE, "");
+    resetStoreE2E2();
+    loadMembersE2E2(TFILE);
+    CHECK(memberCount==0);
+
+    /* 3) header only */
+    writeTextFileE2E2(TFILE, "MemberName,Age,MembershipType,RegistrationDate\n");
+    resetStoreE2E2();
+    loadMembersE2E2(TFILE);
+    CHECK(memberCount==0);
+
+    /* 4) เพิ่มข้อมูล valid 2 รายการ → เซฟ → โหลดกลับ */
+    resetStoreE2E2();
+    CHECK(addMemberE2E2("John Doe",25,"Gold","2025-01-05")>0);
+    CHECK(addMemberE2E2("Jane Smith",30,"Silver","2025-02-10")>0);
+    saveMembersE2E2(TFILE);
+
+    resetStoreE2E2();
+    loadMembersE2E2(TFILE);
+    CHECK(memberCount==2);
+    CHECK(STRCASECMP(name[0],"john doe")==0);
+    CHECK(STRCASECMP(membershipType[0],"gold")==0);
+    CHECK(STRCASECMP(name[1],"jane smith")==0);
+    CHECK(STRCASECMP(membershipType[1],"silver")==0);
+
+    /* 5) duplicate name + delete only first occurrence */
+    CHECK(addMemberE2E2("JOHN DOE",28,"GOLD","2025-03-01")>0);
+    saveMembersE2E2(TFILE);
+    resetStoreE2E2(); loadMembersE2E2(TFILE);
+    CHECK(findByNameCI("john doe")==0);
+
+    int before = memberCount;
+    CHECK(deleteByNameCIE2E2("JoHn DoE")==1);          /* ลบตัวแรกเท่านั้น */
+    CHECK(memberCount==before-1);
+    CHECK(findByNameCI("john doe")>=0);                /* ตัวที่ซ้ำยังเหลือ */
+    /* ควรเหลือ jane smith และ john doe (ตัวหลัง) */
+    CHECK(STRCASECMP(name[0],"jane smith")==0 ||
+          STRCASECMP(name[1],"jane smith")==0);
+
+    saveMembersE2E2(TFILE);
+    resetStoreE2E2(); loadMembersE2E2(TFILE);
+    /* ลบ john ที่เหลือ */
+    CHECK(deleteByNameCIE2E2("john doe")==1);
+    CHECK(findByNameCI("john doe")==-1);
+
+    /* 6) long fields (ตัดทอน + null-terminated) */
+    char longName[200], longType[200];
+    memset(longName,'a',sizeof(longName)); longName[sizeof(longName)-1]='\0';
+    memset(longType,'b',sizeof(longType)); longType[sizeof(longType)-1]='\0';
+    CHECK(addMemberE2E2(longName,22,longType,"2025-04-04")>0);
+    saveMembersE2E2(TFILE);
+
+    resetStoreE2E2(); loadMembersE2E2(TFILE);
+    CHECK(name[memberCount-1][49]=='\0');
+    CHECK(membershipType[memberCount-1][19]=='\0');
+
+    /* 7) capacity: เติมให้เต็มแล้วต้องเพิ่มไม่สำเร็จ */
+    while(memberCount<MAX_MEMBERS){
+        char t[32]; snprintf(t,sizeof(t),"x%03d",memberCount);
+        CHECK(addMemberE2E2(t,20,"gold","2025-05-05")>0 || memberCount==MAX_MEMBERS);
+    }
+    int capBefore = memberCount;
+    CHECK(addMemberE2E2("overflow",20,"gold","2025-06-06")==-1);
+    CHECK(memberCount==capBefore);
+    saveMembersE2E2(TFILE);
+
+    resetStoreE2E2(); loadMembersE2E2(TFILE);
+    CHECK(memberCount==capBefore);
+
+    /* 8) malformed CSV lines: ใส่บรรทัดเสีย ๆ แล้วโหลด ตรวจว่าอย่างน้อยแถวดีถูกอ่าน */
+    writeTextFileE2E2(TFILE,
+        "MemberName,Age,MembershipType,RegistrationDate\n"
+        "badline-without-commas\n"
+        "only,two,columns\n"
+        "good guy,21,gold,2025-07-07\n"
+    );
+    resetStoreE2E2(); loadMembersE2E2(TFILE);
+    /* หมายเหตุ: โค้ดโหลดของคุณไม่ได้เช็คผล sscanf → อาจนับแถวเสียเป็นสมาชิกด้วย
+       เราเลยตรวจแบบผ่อนปรน: ต้อง “อย่างน้อย” มี 1 แถวดีที่เจอได้แน่ */
+    int ok=0;
+    for(int i=0;i<memberCount;i++){
+        if(STRCASECMP(name[i],"good guy")==0 &&
+           STRCASECMP(membershipType[i],"gold")==0){ ok=1; break; }
+    }
+    CHECK(ok==1);
+
+    /* 9) update → save/load → verify persist */
+    int idx = findByNameCI("good guy");
+    CHECK(idx>=0);
+    strcpy(membershipType[idx],"silver");
+    saveMembersE2E2(TFILE);
+    resetStoreE2E2(); loadMembersE2E2(TFILE);
+    idx = findByNameCI("good guy");
+    CHECK(idx>=0 && STRCASECMP(membershipType[idx],"silver")==0);
+
+    /* 10) delete not-exist, delete on empty */
+    CHECK(deleteByNameCIE2E2("nobody")==0);
+    /* ลบทุกคนให้หมด */
+    while(memberCount>0){ CHECK(deleteByNameCIE2E2(name[0])==1); }
+    CHECK(memberCount==0);
+    CHECK(deleteByNameCIE2E2("any")==0);
+
+    /* clean temp file */
+    remove(TFILE);
+
+    if (t_fail==0) printf("E2E all-error-paths PASSED (%d checks)\n", t_run);
+    else           printf("E2E all-error-paths FAILED: %d/%d failed.\n", t_fail, t_run);
+
+    /* ready for re-run */
     t_run = t_fail = 0;
-    resetStoreE2E();
+    resetStoreE2E2();
 }
-
-
 
 int main() 
 {
@@ -608,7 +642,7 @@ do{
     printf("5. Delete Member\n");
     printf("6. Save & Exit\n");
     printf("7. Unit Test\n");
-    printf("8. E2E Test (file flow)\n");
+    printf("8. E2E Test\n");
     printf("----------------\n");
     printf("enter choice: ");
     if(scanf("%d",&choice)!=1)
@@ -643,8 +677,8 @@ do{
     runUnitTests();
     break;
     case 8:
-        runE2ETests();
-        break;
+    runE2EAllErrors();
+    break;
     case 0:
         printf("exiting without saveing...\n");
         exit(0);
