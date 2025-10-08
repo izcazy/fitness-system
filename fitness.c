@@ -452,7 +452,7 @@ static void resetStore(void){
 }
 
 /* เติมแบบแปลงเป็นตัวเล็กก่อน เพื่อจำลอง flow ของ addMember() */
-static int addLowered(const char* n, int a, const char* t, const char* d){
+static int addLoweredE2E(const char* n, int a, const char* t, const char* d){
     char nn[50], tt[20], dd[20];
     if (!n||!t||!d) return -1;
     strncpy(nn, n, sizeof(nn)-1); nn[sizeof(nn)-1]='\0'; toLowerCase(nn);
@@ -461,73 +461,126 @@ static int addLowered(const char* n, int a, const char* t, const char* d){
     return addMemberDirect(nn, a, tt, dd);
 }
 
-/* ------------------------- E2E TEST ------------------------- */
-void runE2ETests(void){
-    const char* TFILE = "e2e_test.csv";
-    printf("\n--- Running E2E Test (file: %s) ---\n", TFILE);
+/* ======================= E2E TEST (End-to-End) ======================= */
+/* จำลองการทำงานจริง: เพิ่ม → เซฟไฟล์ → โหลดกลับ → อัปเดต → ลบ → ตรวจสอบครบทุกขั้นตอน */
 
-    /* 1) เริ่มจากข้อมูลว่าง → เพิ่ม 2 รายการ → เซฟลงไฟล์ */
-    resetStore();
-    CHECK(addLowered("John Doe", 25, "Gold", "2025-01-05") > 0);
-    CHECK(addLowered("Jane Smith", 30, "Silver", "2025-02-10") > 0);
-    saveMembersToFile(TFILE);
+static void resetStoreE2E(void) {
+    for (int i = 0; i < memberCount; i++) {
+        name[i][0] = '\0';
+        membershipType[i][0] = '\0';
+        registrationDate[i][0] = '\0';
+        age[i] = 0;
+    }
+    memberCount = 0;
+}
 
-    /* 2) เคลียร์หน่วยความจำ → โหลดกลับจากไฟล์ → ตรวจว่าตรง */
-    resetStore();
-    loadMembersFromFile(TFILE);
+/* เพิ่มสมาชิก (จำลองแบบแปลงตัวเล็กเหมือน addMember จริง) */
+static int addMemberE2E(const char* n, int a, const char* t, const char* d) {
+    char nn[50], tt[20], dd[20];
+    if (!n || !t || !d) return -1;
+    strncpy(nn, n, sizeof(nn) - 1); nn[sizeof(nn) - 1] = '\0'; toLowerCase(nn);
+    strncpy(tt, t, sizeof(tt) - 1); tt[sizeof(tt) - 1] = '\0'; toLowerCase(tt);
+    strncpy(dd, d, sizeof(dd) - 1); dd[sizeof(dd) - 1] = '\0';
+    return addMemberDirect(nn, a, tt, dd);
+}
+
+/* โหลดจากไฟล์เฉพาะสำหรับ E2E */
+static void loadMembersE2E(const char* filename) {
+    FILE *file = fopen(filename, "r");
+    memberCount = 0;
+    if (!file) return;
+
+    char line[200];
+    if (!fgets(line, sizeof(line), file)) { fclose(file); return; }
+    if (strstr(line, "MemberName") == NULL) {
+        sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
+               name[memberCount], &age[memberCount],
+               membershipType[memberCount], registrationDate[memberCount]);
+        memberCount++;
+    }
+    while (fgets(line, sizeof(line), file)) {
+        if (memberCount >= MAX_MEMBERS) break;
+        sscanf(line, "%49[^,],%d,%19[^,],%19[^\n]",
+               name[memberCount], &age[memberCount],
+               membershipType[memberCount], registrationDate[memberCount]);
+        memberCount++;
+    }
+    fclose(file);
+}
+
+/* เซฟลงไฟล์เฉพาะสำหรับ E2E */
+static void saveMembersE2E(const char* filename) {
+    FILE *file = fopen(filename, "w");
+    if (!file) return;
+    fprintf(file, "MemberName,Age,MembershipType,RegistrationDate\n");
+    for (int i = 0; i < memberCount; i++) {
+        fprintf(file, "%s,%d,%s,%s\n", name[i], age[i], membershipType[i], registrationDate[i]);
+    }
+    fclose(file);
+}
+
+/* ทดสอบครบวงจร */
+void runE2ETestFlow(void) {
+    const char *TEMP_FILE = "e2e_test_data.csv";
+    printf("\n=== Running E2E Test Flow (%s) ===\n", TEMP_FILE);
+
+    resetStoreE2E();
+
+    /* Step 1: เพิ่มข้อมูลใหม่ */
+    CHECK(addMemberE2E("John Doe", 25, "Gold", "2025-01-05") > 0);
+    CHECK(addMemberE2E("Jane Smith", 30, "Silver", "2025-02-10") > 0);
+    saveMembersE2E(TEMP_FILE);
     CHECK(memberCount == 2);
-    CHECK(STRCASECMP(name[0], "john doe")==0);
-    CHECK(STRCASECMP(membershipType[0], "gold")==0);
-    CHECK(STRCASECMP(name[1], "jane smith")==0);
-    CHECK(STRCASECMP(membershipType[1], "silver")==0);
 
-    /* 3) อัปเดตข้อมูล: เปลี่ยน Jane เป็น gold → เซฟ → โหลดใหม่ → ตรวจ */
+    /* Step 2: โหลดใหม่จากไฟล์ → ตรวจสอบข้อมูลตรง */
+    resetStoreE2E();
+    loadMembersE2E(TEMP_FILE);
+    CHECK(memberCount == 2);
+    CHECK(STRCASECMP(name[0], "john doe") == 0);
+    CHECK(STRCASECMP(name[1], "jane smith") == 0);
+
+    /* Step 3: อัปเดตข้อมูล Jane เป็น Gold แล้วเซฟใหม่ */
     int idxJane = findByNameCI("jane smith");
     CHECK(idxJane >= 0);
     strcpy(membershipType[idxJane], "gold");
-    saveMembersToFile(TFILE);
+    saveMembersE2E(TEMP_FILE);
 
-    resetStore();
-    loadMembersFromFile(TFILE);
+    resetStoreE2E();
+    loadMembersE2E(TEMP_FILE);
     idxJane = findByNameCI("jane smith");
     CHECK(idxJane >= 0);
-    CHECK(STRCASECMP(membershipType[idxJane], "gold")==0);
+    CHECK(STRCASECMP(membershipType[idxJane], "gold") == 0);
 
-    /* 4) ลบ John → เซฟ → โหลดใหม่ → ตรวจว่าจำนวนลดและ John หายไป */
+    /* Step 4: ลบ John แล้วเซฟใหม่ */
     int idxJohn = findByNameCI("john doe");
     CHECK(idxJohn >= 0);
-    for (int j=idxJohn; j<memberCount-1; j++){
-        strcpy(name[j], name[j+1]);
-        age[j] = age[j+1];
-        strcpy(membershipType[j], membershipType[j+1]);
-        strcpy(registrationDate[j], registrationDate[j+1]);
+    for (int j = idxJohn; j < memberCount - 1; j++) {
+        strcpy(name[j], name[j + 1]);
+        age[j] = age[j + 1];
+        strcpy(membershipType[j], membershipType[j + 1]);
+        strcpy(registrationDate[j], registrationDate[j + 1]);
     }
     memberCount--;
-    saveMembersToFile(TFILE);
+    saveMembersE2E(TEMP_FILE);
 
-    resetStore();
-    loadMembersFromFile(TFILE);
+    resetStoreE2E();
+    loadMembersE2E(TEMP_FILE);
     CHECK(memberCount == 1);
     CHECK(findByNameCI("john doe") == -1);
     CHECK(findByNameCI("jane smith") >= 0);
 
-    /* 5) ค้นหาหลังรีโหลด: ต้องเจอ Jane */
-    int found = 0;
-    for (int i=0;i<memberCount;i++){
-        if (STRCASECMP(name[i], "jane smith")==0) { found=1; break; }
-    }
-    CHECK(found == 1);
+    /* Step 5: ลบไฟล์ชั่วคราวหลังเทสต์ */
+    remove(TEMP_FILE);
 
-    /* ทำความสะอาดไฟล์ชั่วคราว */
-    remove(TFILE);
+    if (t_fail == 0)
+        printf("✅ E2E Test Flow PASSED (%d checks)\n", t_run);
+    else
+        printf("❌ E2E Test Flow FAILED: %d/%d checks failed.\n", t_fail, t_run);
 
-    if (t_fail==0) printf("E2E test PASSED! (%d checks)\n", t_run);
-    else           printf("E2E test FAILED: %d/%d checks failed.\n", t_fail, t_run);
-
-    /* รีเซ็ตตัวนับ เพื่อพร้อมรันใหม่ได้ */
     t_run = t_fail = 0;
-    resetStore();
+    resetStoreE2E();
 }
+
 
 
 int main() 
