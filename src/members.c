@@ -197,6 +197,35 @@ void addMember(void)
     saveMembers();
     printf("Member added successfully!\n");
 }
+/* --------- helpers for flexible, case-insensitive search --------- */
+static void str_tolower_copy(char *dst, const char *src, size_t dstsz) {
+    if (dstsz == 0) return;
+    size_t i = 0;
+    for (; src[i] && i + 1 < dstsz; ++i) {
+        unsigned char c = (unsigned char)src[i];
+        dst[i] = (char)tolower(c);
+    }
+    dst[i] = '\0';
+}
+
+/* return 1 if 'sub' occurs anywhere inside 's' (case-insensitive), else 0 */
+static int icontains(const char *s, const char *sub) {
+    char hs[128], nd[128];
+    str_tolower_copy(hs, s, sizeof(hs));
+    str_tolower_copy(nd, sub, sizeof(nd));
+    return strstr(hs, nd) != NULL;
+}
+
+/* return 1 if key is a prefix of the FIRST token (first name), case-insensitive */
+static int firstNamePrefixMatch(const char *fullName, const char *key) {
+    char buf[64], k[64];
+    str_tolower_copy(buf, fullName, sizeof(buf));
+    str_tolower_copy(k,   key,      sizeof(k));
+    /* ตัดเอาเฉพาะคำแรก (ก่อนเว้นวรรค) */
+    char *sp = strchr(buf, ' ');
+    if (sp) *sp = '\0';
+    return strncmp(buf, k, strlen(k)) == 0;
+}
 
 void searchMember(void) 
 {
@@ -223,6 +252,39 @@ void searchMember(void)
     }
     if (!found) printf("No member found.\n");
 }
+
+    void searchMember(void) 
+{
+    char keyword[50];
+    do 
+    {
+        printf("Enter name or membership type (letters only): ");
+        if (scanf(" %49[^\n]", keyword) != 1) 
+        { 
+            printf("Input error.\n"); 
+            return; 
+        }
+        if (!isValidNameOrType(keyword)) 
+            printf("Invalid input! Please use only letters and spaces.\n");
+    } 
+    while (!isValidNameOrType(keyword));
+
+    int found = 0;
+    for (int i = 0; i < memberCount; ++i) 
+    {
+        
+        if (firstNamePrefixMatch(name[i], keyword) ||
+            icontains(name[i], keyword) ||
+            STRCASECMP(membershipType[i], keyword) == 0) 
+        {
+            printf("Found: %s, %d, %s, %s\n",
+                   name[i], age[i], membershipType[i], registrationDate[i]);
+            found = 1;
+        }
+    }
+    if (!found) printf("No member found.\n");
+}
+
 
 void updateMember(void) 
 {
