@@ -3,19 +3,24 @@
 #include "members.h"
 #include "tests.h"
 
-static void pressEnterToContinue(void){
+static void pressEnterToContinue(void)
+{
     int c;
     printf("\nPress Enter to continue...");
-    do {
+    do 
+    {
         c = getchar();
         if (c == '\n') break;
-    } while (c != EOF);
+    } 
+    while (c != EOF);
     getchar();
 }
 
-static void menu(void){
+static void menu(void)
+{
     int choice;
-    do {
+    do 
+    {
         clearScreen();
         printf("=================\n");
         printf(" Fitness system\n");
@@ -30,12 +35,14 @@ static void menu(void){
         printf("8. E2E Test\n");
         printf("----------------\n");
         printf("enter choice: ");
-        if (scanf("%d", &choice) != 1){
+        if (scanf("%d", &choice) != 1)
+        {
             int c; while ((c=getchar())!='\n' && c!=EOF){}
             choice = -1;
         }
 
-        switch (choice){
+        switch (choice)
+        {
             case 1: displayMembers(); break;
             case 2: addMember(); break;
             case 3: searchMember(); break;
@@ -51,7 +58,8 @@ static void menu(void){
     } while (1);
 }
 
-int main(void){
+int main(void)
+{
     loadMembers();
     menu();
     return 0;

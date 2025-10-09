@@ -10,14 +10,17 @@ static int t_run=0, t_fail=0;
 #define CHECK_EQ_INT(a,b) CHECK((a)==(b))
 
 /* helpers for test preparation */
-static void resetStore(void){
-    for (int i=0;i<memberCount;i++){
+static void resetStore(void)
+{
+    for (int i=0;i<memberCount;i++)
+    {
         name[i][0]='\0'; membershipType[i][0]='\0'; registrationDate[i][0]='\0'; age[i]=0;
     }
     memberCount = 0;
 }
 
-static int addLowered(const char* n,int a,const char* t,const char* d){
+static int addLowered(const char* n,int a,const char* t,const char* d)
+{
     char nn[50], tt[20], dd[20];
     if (!n||!t||!d) return -1;
     strncpy(nn,n,sizeof(nn)-1); nn[sizeof(nn)-1]='\0'; toLowerCase(nn);
@@ -26,7 +29,8 @@ static int addLowered(const char* n,int a,const char* t,const char* d){
     return addMemberDirect(nn,a,tt,dd);
 }
 
-void runUnitTests(void){
+void runUnitTests(void)
+{
     resetStore(); t_run=0; t_fail=0;
     printf("\n===== Running Unit Tests: Search + Delete =====\n");
 

@@ -8,13 +8,16 @@ static int t_run=0, t_fail=0;
 #define CHECK(c) do{ t_run++; if(!(c)){ t_fail++; \
   fprintf(stderr,"[FAIL] %s:%d -> %s\n", __FILE__, __LINE__, #c); } }while(0)
 
-static void resetStoreE(void){
-    for (int i=0;i<memberCount;i++){
+static void resetStoreE(void)
+{
+    for (int i=0;i<memberCount;i++)
+    {
         name[i][0]='\0'; membershipType[i][0]='\0'; registrationDate[i][0]='\0'; age[i]=0;
     }
     memberCount=0;
 }
-static int addLoweredE(const char* n,int a,const char* t,const char* d){
+static int addLoweredE(const char* n,int a,const char* t,const char* d)
+{
     char nn[50], tt[20], dd[20];
     if (!n||!t||!d) return -1;
     strncpy(nn,n,sizeof(nn)-1); nn[sizeof(nn)-1]='\0'; toLowerCase(nn);
@@ -22,11 +25,13 @@ static int addLoweredE(const char* n,int a,const char* t,const char* d){
     strncpy(dd,d,sizeof(dd)-1); dd[sizeof(dd)-1]='\0';
     return addMemberDirect(nn,a,tt,dd);
 }
-static void writeTextFile(const char* filename,const char* content){
+static void writeTextFile(const char* filename,const char* content)
+{
     FILE *f=fopen(filename,"w"); if(!f) return; if(content) fputs(content,f); fclose(f);
 }
 
-static int printSectionResult(const char* title, int startRun, int startFail){
+static int printSectionResult(const char* title, int startRun, int startFail)
+{
     int dRun = t_run - startRun;
     int dFail= t_fail- startFail;
     if (dFail==0) printf("%s: PASS (%d checks)\n", title, dRun);
@@ -35,7 +40,8 @@ static int printSectionResult(const char* title, int startRun, int startFail){
 }
 
 /* sections */
-static void sec_missing_empty_header(const char* TFILE){
+static void sec_missing_empty_header(const char* TFILE)
+{
     remove(TFILE);
     resetStoreE(); loadMembersFromFile(TFILE);
     CHECK(memberCount==0);
@@ -49,7 +55,8 @@ static void sec_missing_empty_header(const char* TFILE){
     CHECK(memberCount==0);
 }
 
-static void sec_add_save_load_basic(const char* TFILE){
+static void sec_add_save_load_basic(const char* TFILE)
+{
     resetStoreE();
     CHECK(addLoweredE("John Doe",25,"Gold","2025-01-05")>0);
     CHECK(addLoweredE("Jane Smith",30,"Silver","2025-02-10")>0);
@@ -63,7 +70,8 @@ static void sec_add_save_load_basic(const char* TFILE){
     CHECK(STRCASECMP(membershipType[1],"silver")==0);
 }
 
-static void sec_duplicate_delete_first(const char* TFILE){
+static void sec_duplicate_delete_first(const char* TFILE)
+{
     CHECK(addLoweredE("JOHN DOE",28,"GOLD","2025-03-01")>0);
     saveMembersToFile(TFILE);
 
@@ -78,7 +86,8 @@ static void sec_duplicate_delete_first(const char* TFILE){
     CHECK(findByNameCI("john doe")==-1);
 }
 
-static void sec_long_fields_trunc(const char* TFILE){
+static void sec_long_fields_trunc(const char* TFILE)
+{
     char longName[200], longType[200];
     memset(longName,'a',sizeof(longName)); longName[sizeof(longName)-1]='\0';
     memset(longType,'b',sizeof(longType)); longType[sizeof(longType)-1]='\0';
@@ -90,8 +99,10 @@ static void sec_long_fields_trunc(const char* TFILE){
     CHECK(membershipType[memberCount-1][19]=='\0');
 }
 
-static void sec_capacity_full(const char* TFILE){
-    while (memberCount < MAX_MEMBERS){
+static void sec_capacity_full(const char* TFILE)
+{
+    while (memberCount < MAX_MEMBERS)
+    {
         char t[32]; snprintf(t,sizeof(t),"x%03d",memberCount);
         int ok = addLoweredE(t,20,"gold","2025-05-05");
         if (ok<0) break;
@@ -105,7 +116,8 @@ static void sec_capacity_full(const char* TFILE){
     CHECK(memberCount==capBefore);
 }
 
-static void sec_malformed_rows(const char* TFILE){
+static void sec_malformed_rows(const char* TFILE)
+{
     writeTextFile(TFILE,
         "MemberName,Age,MembershipType,RegistrationDate\n"
         "badline-without-commas\n"
@@ -114,13 +126,15 @@ static void sec_malformed_rows(const char* TFILE){
     );
     resetStoreE(); loadMembersFromFile(TFILE);
     int ok=0;
-    for(int i=0;i<memberCount;i++){
+    for(int i=0;i<memberCount;i++)
+    {
         if(STRCASECMP(name[i],"good guy")==0 && STRCASECMP(membershipType[i],"gold")==0){ ok=1; break; }
     }
     CHECK(ok==1);
 }
 
-static void sec_update_persist(const char* TFILE){
+static void sec_update_persist(const char* TFILE)
+{
     int idx = findByNameCI("good guy");
     CHECK(idx>=0);
     strcpy(membershipType[idx], "silver");
@@ -131,7 +145,8 @@ static void sec_update_persist(const char* TFILE){
     CHECK(idx>=0 && STRCASECMP(membershipType[idx],"silver")==0);
 }
 
-static void sec_delete_not_exist_empty(const char* TFILE){
+static void sec_delete_not_exist_empty(const char* TFILE)
+{
     (void)TFILE;
     CHECK(deleteByNameCI("nobody")==0);
     while (memberCount>0){ CHECK(deleteByNameCI(name[0])==1); }
@@ -139,7 +154,8 @@ static void sec_delete_not_exist_empty(const char* TFILE){
     CHECK(deleteByNameCI("any")==0);
 }
 
-void runE2EAllErrors_Pretty(void){
+void runE2EAllErrors_Pretty(void)
+{
     const char* TFILE = "e2e_all_errors.csv";
     int totalFailed = 0;
     printf("\n===== E2E (all error paths) =====\n");

@@ -11,24 +11,29 @@ char membershipType[MAX_MEMBERS][20];
 char registrationDate[MAX_MEMBERS][20];
 int  memberCount = 0;
 
-void clearScreen(void) {
+void clearScreen(void) 
+{
     system(CLEAR_SCREEN);
 }
 
-void toLowerCase(char *s) {
+void toLowerCase(char *s) 
+{
     for (; *s; ++s) *s = (char)tolower((unsigned char)*s);
 }
 
-int isValidNameOrType(const char *s) {
+int isValidNameOrType(const char *s) 
+{
     if (!s || !*s) return 0;
-    for (int i = 0; s[i] != '\0'; ++i) {
+    for (int i = 0; s[i] != '\0'; ++i) 
+    {
         if (!isalpha((unsigned char)s[i]) && !isspace((unsigned char)s[i])) return 0;
     }
     return 1;
 }
 
-/* ---------- storage helpers exposed for tests ---------- */
-int addMemberDirect(const char* n, int a, const char* t, const char* d) {
+/* storage helpers exposed for tests */
+int addMemberDirect(const char* n, int a, const char* t, const char* d) 
+{
     if (!n || !t || !d) return -1;
     if (memberCount >= MAX_MEMBERS) return -1;
     strncpy(name[memberCount], n, 49); name[memberCount][49] = '\0';
@@ -39,19 +44,25 @@ int addMemberDirect(const char* n, int a, const char* t, const char* d) {
     return memberCount;
 }
 
-int findByNameCI(const char* n) {
+int findByNameCI(const char* n) 
+{
     if (!n) return -1;
-    for (int i = 0; i < memberCount; ++i) {
+    for (int i = 0; i < memberCount; ++i) 
+    {
         if (STRCASECMP(name[i], n) == 0) return i;
     }
     return -1;
 }
 
-int deleteByNameCI(const char* n) {
+int deleteByNameCI(const char* n) 
+{
     if (!n || memberCount <= 0) return 0;
-    for (int i = 0; i < memberCount; ++i) {
-        if (STRCASECMP(name[i], n) == 0) {
-            for (int j = i; j < memberCount - 1; ++j) {
+    for (int i = 0; i < memberCount; ++i) 
+    {
+        if (STRCASECMP(name[i], n) == 0) 
+        {
+            for (int j = i; j < memberCount - 1; ++j) 
+            {
                 strcpy(name[j], name[j + 1]);
                 age[j] = age[j + 1];
                 strcpy(membershipType[j], membershipType[j + 1]);
@@ -64,12 +75,14 @@ int deleteByNameCI(const char* n) {
     return 0;
 }
 
-/* ---------- CSV IO ---------- */
-static int parseRow(char* line, char* outName, int* outAge, char* outType, char* outReg) {
+/* CSV IO */
+static int parseRow(char* line, char* outName, int* outAge, char* outType, char* outReg) 
+{
     char nbuf[50], tbuf[20], dbuf[20];
     int a;
     int read = sscanf(line, " %49[^,],%d,%19[^,],%19[^\n]", nbuf, &a, tbuf, dbuf);
-    if (read == 4) {
+    if (read == 4) 
+    {
         strncpy(outName, nbuf, 49); outName[49] = '\0';
         *outAge = a;
         strncpy(outType, tbuf, 19); outType[19] = '\0';
@@ -79,7 +92,8 @@ static int parseRow(char* line, char* outName, int* outAge, char* outType, char*
     return 0;
 }
 
-void loadMembersFromFile(const char* filename) {
+void loadMembersFromFile(const char* filename) 
+{
     FILE* file = fopen(filename, "r");
     memberCount = 0;
     if (!file) return;
@@ -87,7 +101,8 @@ void loadMembersFromFile(const char* filename) {
     char line[256];
     if (!fgets(line, sizeof(line), file)) { fclose(file); return; }
 
-    if (strstr(line, "MemberName") == NULL) {
+    if (strstr(line, "MemberName") == NULL) 
+    {
         if (parseRow(line, name[memberCount], &age[memberCount],
                      membershipType[memberCount], registrationDate[memberCount])) {
             memberCount++;
@@ -99,21 +114,25 @@ void loadMembersFromFile(const char* filename) {
         if (parseRow(line, name[memberCount], &age[memberCount],
                      membershipType[memberCount], registrationDate[memberCount])) {
             memberCount++;
-        } else {
+        } else 
+        {
             /* skip malformed row */
         }
     }
     fclose(file);
 }
 
-void saveMembersToFile(const char* filename) {
+void saveMembersToFile(const char* filename) 
+{
     FILE* file = fopen(filename, "w");
-    if (!file) {
+    if (!file) 
+    {
         printf("Error: cannot open file to save.\n");
         return;
     }
     fprintf(file, "MemberName,Age,MembershipType,RegistrationDate\n");
-    for (int i = 0; i < memberCount; ++i) {
+    for (int i = 0; i < memberCount; ++i) 
+    {
         fprintf(file, "%s,%d,%s,%s\n",
                 name[i], age[i], membershipType[i], registrationDate[i]);
     }
@@ -125,21 +144,26 @@ void loadMembers(void)  { loadMembersFromFile(FILENAME); }
 void saveMembers(void)  { saveMembersToFile(FILENAME);   }
 
 /* ---------- core features ---------- */
-void displayMembers(void) {
-    if (memberCount == 0) {
+void displayMembers(void) 
+{
+    if (memberCount == 0) 
+    {
         printf("No members available.\n");
         return;
     }
     printf("\n%-20s %-5s %-15s %-12s\n", "Name", "Age", "Membership", "Registration");
     printf("-----------------------------------------------------------\n");
-    for (int i = 0; i < memberCount; ++i) {
+    for (int i = 0; i < memberCount; ++i) 
+    {
         printf("%-20s %-5d %-15s %-12s\n",
                name[i], age[i], membershipType[i], registrationDate[i]);
     }
 }
 
-void addMember(void) {
-    if (memberCount >= MAX_MEMBERS) {
+void addMember(void) 
+{
+    if (memberCount >= MAX_MEMBERS) 
+    {
         printf("Member list is full!\n");
         return;
     }
@@ -157,11 +181,13 @@ void addMember(void) {
     printf("Enter age: ");
     if (scanf("%d", &aa) != 1) { printf("Input error.\n"); return; }
 
-    do {
+    do 
+    {
         printf("Enter membership type (Gold/Silver): ");
         if (scanf(" %19s", tt) != 1) { printf("Input error.\n"); return; }
         if (!isValidNameOrType(tt)) printf("Invalid input! Type must contain only letters.\n");
-    } while (!isValidNameOrType(tt));
+    } 
+    while (!isValidNameOrType(tt));
     toLowerCase(tt);
 
     printf("Enter registration date (YYYY-MM-DD): ");
@@ -172,19 +198,24 @@ void addMember(void) {
     printf("Member added successfully!\n");
 }
 
-void searchMember(void) {
+void searchMember(void) 
+{
     char keyword[50];
-    do {
+    do 
+    {
         printf("Enter name or membership type (letters only): ");
         if (scanf(" %49[^\n]", keyword) != 1) { printf("Input error.\n"); return; }
         if (!isValidNameOrType(keyword)) printf("Invalid input! Please use only letters and spaces.\n");
-    } while (!isValidNameOrType(keyword));
+    } 
+    while (!isValidNameOrType(keyword));
     toLowerCase(keyword);
 
     int found = 0;
-    for (int i = 0; i < memberCount; ++i) {
+    for (int i = 0; i < memberCount; ++i) 
+    {
         if (STRCASECMP(name[i], keyword) == 0 ||
-            STRCASECMP(membershipType[i], keyword) == 0) {
+            STRCASECMP(membershipType[i], keyword) == 0) 
+            {
             printf("Found: %s, %d, %s, %s\n",
                    name[i], age[i], membershipType[i], registrationDate[i]);
             found = 1;
@@ -193,13 +224,16 @@ void searchMember(void) {
     if (!found) printf("No member found.\n");
 }
 
-void updateMember(void) {
+void updateMember(void) 
+{
     char keyword[50];
     printf("Enter member name to update: ");
     if (scanf(" %49[^\n]", keyword) != 1) { printf("Input error.\n"); return; }
 
-    for (int i = 0; i < memberCount; ++i) {
-        if (STRCASECMP(name[i], keyword) == 0) {
+    for (int i = 0; i < memberCount; ++i) 
+    {
+        if (STRCASECMP(name[i], keyword) == 0) 
+        {
             printf("Enter new membership type: ");
             if (scanf(" %19s", membershipType[i]) != 1) { printf("Input error.\n"); return; }
             saveMembers();
@@ -210,15 +244,18 @@ void updateMember(void) {
     printf("Member not found.\n");
 }
 
-void deleteMember(void) {
+void deleteMember(void) 
+{
     char keyword[50];
     printf("Enter member name to delete: ");
     if (scanf(" %49[^\n]", keyword) != 1) { printf("Input error.\n"); return; }
 
-    if (deleteByNameCI(keyword)) {
+    if (deleteByNameCI(keyword)) 
+    {
         saveMembers();
         printf("Member deleted!\n");
-    } else {
+    } else 
+    {
         printf("Member not found.\n");
     }
 }
