@@ -233,32 +233,6 @@ void searchMember(void)
     do 
     {
         printf("Enter name or membership type (letters only): ");
-        if (scanf(" %49[^\n]", keyword) != 1) { printf("Input error.\n"); return; }
-        if (!isValidNameOrType(keyword)) printf("Invalid input! Please use only letters and spaces.\n");
-    } 
-    while (!isValidNameOrType(keyword));
-    toLowerCase(keyword);
-
-    int found = 0;
-    for (int i = 0; i < memberCount; ++i) 
-    {
-        if (STRCASECMP(name[i], keyword) == 0 ||
-            STRCASECMP(membershipType[i], keyword) == 0) 
-            {
-            printf("Found: %s, %d, %s, %s\n",
-                   name[i], age[i], membershipType[i], registrationDate[i]);
-            found = 1;
-        }
-    }
-    if (!found) printf("No member found.\n");
-}
-
-    void searchMember(void) 
-{
-    char keyword[50];
-    do 
-    {
-        printf("Enter name or membership type (letters only): ");
         if (scanf(" %49[^\n]", keyword) != 1) 
         { 
             printf("Input error.\n"); 

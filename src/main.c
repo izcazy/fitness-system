@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "members.h"
 #include "tests.h"
+#include "platform.h"
 
 static void pressEnterToContinue(void)
 {
