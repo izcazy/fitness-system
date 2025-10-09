@@ -186,12 +186,16 @@ void runE2EAllErrors_Pretty(void)
 
     sr=t_run; sf=t_fail; sec_delete_not_exist_empty(TFILE);
     totalFailed += printSectionResult("Delete not-exist & on empty", sr, sf);
+    
 
     printf("---------------------------------\n");
-    if (totalFailed==0) printf("E2E Summary: PASS (total checks: %d)\n", t_run);
-    else printf("E2E Summary: FAILED sections=%d (failed checks: %d / %d)\n",
+    if (totalFailed==0) 
+        printf("E2E Summary: PASS (total checks: %d)\n", t_run);
+    else 
+        printf("E2E Summary: FAILED sections=%d (failed checks: %d / %d)\n",
                 totalFailed, t_fail, t_run);
 
     remove(TFILE);
-    resetStoreE(); t_run=t_fail=0;
+    resetStoreE(); 
+    t_run=t_fail=0;
 }

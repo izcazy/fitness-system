@@ -57,23 +57,40 @@ int findByNameCI(const char* n)
 int deleteByNameCI(const char* n) 
 {
     if (!n || memberCount <= 0) return 0;
+
     for (int i = 0; i < memberCount; ++i) 
     {
         if (STRCASECMP(name[i], n) == 0) 
         {
-            for (int j = i; j < memberCount - 1; ++j) 
+            char confirm;
+            printf("Are you sure you want to delete '%s'? (y/n): ", name[i]);
+            scanf(" %c", &confirm);
+
+            if (confirm == 'y' || confirm == 'Y') 
             {
-                strcpy(name[j], name[j + 1]);
-                age[j] = age[j + 1];
-                strcpy(membershipType[j], membershipType[j + 1]);
-                strcpy(registrationDate[j], registrationDate[j + 1]);
+                // Shift all elements left after deletion
+                for (int j = i; j < memberCount - 1; ++j) 
+                {
+                    strcpy(name[j], name[j + 1]);
+                    age[j] = age[j + 1];
+                    strcpy(membershipType[j], membershipType[j + 1]);
+                    strcpy(registrationDate[j], registrationDate[j + 1]);
+                }
+                memberCount--;
+                printf("Member deleted successfully.\n");
+                return 1;
+            } 
+            else 
+            {
+                printf("Deletion cancelled.\n");
+                return 0;
             }
-            memberCount--;
-            return 1;
         }
     }
+    printf("Member not found.\n");
     return 0;
 }
+
 
 /* CSV IO */
 static int parseRow(char* line, char* outName, int* outAge, char* outType, char* outReg) 
